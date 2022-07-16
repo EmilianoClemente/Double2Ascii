@@ -94,9 +94,42 @@ int Double2Ascii(char* buff,double x,int fractional_digits,char separator){
         multiple*=10;
     }
 #else
-    double multiple=10;
-    for(int i=0;i<fractional_digits;i++){
-        multiple*=10;
+    double multiple=1;
+    switch(fractional_digits){
+        case 0:
+            multiple=1E0;
+            break;
+        case 1:
+            multiple=1E1;
+            break;
+        case 2:
+            multiple=1E2;
+            break;
+        case 3:
+            multiple=1E3;
+            break;
+        case 4:
+            multiple=1E4;
+            break;
+        case 5:
+            multiple=1E5;
+            break;
+        case 6:
+            multiple=1E6;
+            break;
+        case 7:
+            multiple=1E7;
+            break;
+        case 8:
+            multiple=1E8;
+            break;
+        case 9:
+            multiple=1E9;
+            break;
+        default:
+            fractional_digits=0;
+            multiple=1E0;
+            break;
     }
     x*=multiple;
     for(int i=0;i<fractional_digits;i++){
@@ -139,7 +172,7 @@ int main()
     if(0){
         printf("効率確認\n");
         int looptimes=15E7;
-        double data=15.9672E19;
+        double data=15.9672;
         time_t start=time(NULL);
         for(int i=0;i<looptimes;i++){
             Double2Ascii(buff,data,4,'.');
@@ -212,7 +245,7 @@ int main()
             if(err<0)   err=err*-1;
             if((0!=strcmp(buff,buff2))||(size1!=size2)){
             // if(true){
-                if(err<0.00001){
+                if(err<0.0001){
                     continue;
                 }
                 printf("err=%f",err);
