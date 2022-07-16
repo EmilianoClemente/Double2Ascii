@@ -11,6 +11,12 @@ typedef long long int64;
 
 int Double2Ascii(char* buff,double x,int fractional_digits,char separator){
     const char* startAdr=buff;
+    if(true!=isfinite(x)){
+        WRITEBUF(buff,'?'); //TODO 適切な文字を入れる
+        WRITEBUF(buff,0);
+        //null文字はカウントしない
+        return (buff-startAdr-1);
+    }
     char sign=' ';
     if(x<0){
         //0以下の時、整数にし、符号を変える
@@ -21,6 +27,11 @@ int Double2Ascii(char* buff,double x,int fractional_digits,char separator){
 
     //仮数部を1から10の間になるように調整
     int exponent=0;
+    while(x>=1E10){
+        //大きい数字来るときの高速化対策
+        x/=1E10;
+        exponent+=10;
+    }
     while (x >= 10) {
         x /= 10;
         exponent++;
@@ -64,7 +75,7 @@ int Double2Ascii(char* buff,double x,int fractional_digits,char separator){
     }else{
         WRITEBUF(buff,'+');
     }
-    if(exponent>99);
+    if(exponent>99);    //指数が二桁以上はかけない
     else{
         int digit=(exponent/10)%10;
         WRITEBUF(buff,digit+'0');
@@ -82,22 +93,22 @@ int main()
 {
     char buff[128];
     char buff2[128];
-    if(0){
+    if(1){
         printf("効率確認\n");
         int looptimes=1E7;
-        double data=1.12348888;
+        double data=1.2324543E11;
         time_t start=time(NULL);
         for(int i=0;i<looptimes;i++){
             Double2Ascii(buff,data,4,'.');
         }
         time_t end=time(NULL);
-        printf("%lld",end-start);
+        printf("looptimes=%d,Double2Ascii cost %lld s\n",looptimes,end-start);
         start=time(NULL);
         for(int i=0;i<looptimes;i++){
             sprintf(buff, "%11.4E", data);
         }
         end=time(NULL);
-        printf("%lld",end-start);
+        printf("looptimes=%d,sprintf cost %lld s\n",looptimes,end-start);
     }
 
     if(0){
@@ -109,7 +120,7 @@ int main()
         printf("%s\n",buff2);
     }
 
-    if(1){
+    if(0){
         printf("正確性確認\n");
         for(int times=0;times<100;times++){
             long double max=pow(10,times);
