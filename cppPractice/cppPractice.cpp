@@ -9,36 +9,6 @@ typedef long long int64;
 
 #define WRITEBUF(buf,data)  do{*buff=data;buff++;}while(0)
 
-void combineFile(FILENAME main,FILENAME add){
-    FILE* fmain=fopen(main,"a+");
-    FILE* fadd=fopen(add,"r");
-    FILE* fdes=fopen("des.csv","a+");
-    char buffer=0;
-    FILE* cur=fmain;
-    if((fmain==NULL)||(fadd==NULL)) goto FINALLY;
-
-    while(true){
-        while(true){
-            if(feof(cur)) goto FINALLY;
-            fread(&buffer,1,1,cur);
-            if('\n'==buffer)break;
-            fwrite(&buffer,1,1,fdes);
-        }
-        if(fmain==cur)  cur=fadd;
-        else{
-            buffer='\n';
-            fwrite(&buffer,1,1,fdes);
-            cur=fmain;
-        }
-    }
-
-
-
-FINALLY:
-    if(fmain!=NULL) fclose(fmain);
-    if(fadd!=NULL)  fclose(fadd);
-}
-
 int Double2Ascii(char* buff,double x,int fractional_digits,char separator){
     const char* startAdr=buff;
     char sign=' ';
@@ -51,79 +21,55 @@ int Double2Ascii(char* buff,double x,int fractional_digits,char separator){
 
     //仮数部を1から10の間になるように調整
     int exponent=0;
-    if(x>=10){
-        while (x >= 10) {
-            x /= 10;
-            exponent++;
-        }
+    while (x >= 10) {
+        x /= 10;
+        exponent++;
     }
-    else if(x<1&&x>0){
-        while (x < 1) {
-            x *= 10;
-            exponent--;
-        }
+    while (x < 1) {
+        x *= 10;
+        exponent--;
     }
 
     //四捨五入処理
-    double round_num=0.5;
+    double adjust=0.5;  //四捨五入調整用
     for(int i=0;i<fractional_digits;i++){
-        round_num/=10;
+        adjust/=10;
     }
-    x=x+round_num;
+    x=x+adjust;
 
     //四捨五入後、10以上になる場合、10以下にする
-    if(x>=10){
+    while(x>=10){
         x/=10;
         exponent++;
     }
 
-#if 0   //整数部が1桁以上のときの処理
-    int start=1;
-    if(x>=100.0){
-        start=100;
-    }
-    else if(x>=10.0){
-        start=10;
-    }
-    else{
-        start=1;
-    }
-
-    for(int i=start;i>=1;i/=10){
-        //整数部
-        int digit=(int)(x/i)%10;
-        WRITEBUF(buff,digit+'0');
-    }
-#else
+    //整数部
     int digit=(int)x%10;
     WRITEBUF(buff,digit+'0');
-#endif
 
     WRITEBUF(buff,separator);   //小数点を書く
-    int times=10;
+    int multiple=10;    //倍数
     for(int i=0;i<fractional_digits;i++){
         //小数部
-        int digit=(int64)(x*times)%10;
+        int digit=(int64)(x*multiple)%10;
         WRITEBUF(buff,digit+'0');
-        times*=10;
+        multiple*=10;
     }
 
-    if(/*exponent!=0*/true){
-        //指数部
-        WRITEBUF(buff,'E');
-        if(exponent<0){
-            exponent=-exponent;
-            WRITEBUF(buff,'-');
-        }else{
-            WRITEBUF(buff,'+');
-        }
-        if(exponent>99);
-        else{
-            int digit=(exponent/10)%10;
-            WRITEBUF(buff,digit+'0');
-            digit=exponent%10;
-            WRITEBUF(buff,digit+'0');
-        }
+    //指数部
+    WRITEBUF(buff,'E');
+    if(exponent<0){
+        exponent=-exponent;
+        WRITEBUF(buff,'-');
+    }else{
+        WRITEBUF(buff,'+');
+    }
+    if(exponent>99);
+    else{
+        int digit=(exponent/10)%10;
+        WRITEBUF(buff,digit+'0');
+        digit=exponent%10;
+        WRITEBUF(buff,digit+'0');
     }
 
     WRITEBUF(buff,0);
@@ -154,7 +100,7 @@ int main()
         printf("%lld",end-start);
     }
 
-    if(1){
+    if(0){
         printf("個別確認\n");
         double data=1E74;
         Double2Ascii(buff,data,4,'.');
@@ -174,16 +120,17 @@ int main()
         
             for (int i = 0; i < 1000; i++) {
                 double data=dist(gen);
-                int size1=Double2Ascii(buff,data,5,'.');
-                int size2=sprintf(buff2,"%12.5E",data);
-                double err=(atof(buff)-atof(buff2))/atof(buff);
+                int size1=Double2Ascii(buff,data,4,'.');
+                int size2=sprintf(buff2,"%11.4E",data);
+                double err=(atof(buff)-atof(buff2))/atof(buff);     //誤差
                 if(err<0)   err=err*-1;
-                if((0!=strcmp(buff,buff2))||(size1!=size2)/*&&(err>0.0001)*/){
+                if((0!=strcmp(buff,buff2))||(size1!=size2)){
                 // if(true){
                     printf("err=%f",err);
                     printf("%s,size=%d,",buff,size1);
                     printf("%s,size=%d,",buff2,size2);
                     printf("diff!\n");
+                    _ASSERT(false);
                 }else{
                     printf("%s,size=%d,",buff,size1);
                     printf("%s,size=%d,",buff2,size2);
