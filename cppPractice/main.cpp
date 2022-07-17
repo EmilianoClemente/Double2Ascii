@@ -19,8 +19,11 @@ namespace useTemplate{
 
     template<int Fractional_Digits>
     int Double2Ascii(char* buff,double x,char separator){
-        static const double scale=QuickPow<10,Fractional_Digits>();     //xの有効数値を小数点の左に持っていくためのスケール係数
-        static const double multiple_reciprocal_initializer=QuickPow<10,-1*Fractional_Digits>();
+        static const double ENLARGE_SCALE=QuickPow<10,Fractional_Digits>();     //xの有効数値を小数点の左に持っていくためのスケール係数
+        static const double SHRINK_SCALE=QuickPow<10,-1*Fractional_Digits>();   //xの有効数値を小数点の右に持っていくためのスケール係数
+
+        double shrink_scale=SHRINK_SCALE;   //staticをそのまま使って計算すると遅くなるので、ローカルにコピーする
+        double enlarge_scale=ENLARGE_SCALE;
 
         const char* buff_sp=buff;
         const double x_origin=x;
@@ -59,8 +62,7 @@ namespace useTemplate{
         }
 
         //四捨五入処理
-
-        x=x+0.5*multiple_reciprocal_initializer;    //四捨五入
+        x=x+0.5*shrink_scale;
 
         //四捨五入後、10以上になる場合、10以下にする
         while(x>=10){
@@ -76,12 +78,11 @@ namespace useTemplate{
 
         //小数部
         //TODO 1.0024999999999999*100000が10025.000000000000になることを直す必要ある
-        double multiple_reciprocal=multiple_reciprocal_initializer;
-        x*=(scale*10);
+        x*=(enlarge_scale*10);
         for(int i=0;i<Fractional_Digits;i++){
-            digit=(INT64)(x*multiple_reciprocal)%10;
+            digit=(INT64)(x*shrink_scale)%10;
             WRITEBUF(buff,digit+'0');
-            multiple_reciprocal*=10;
+            shrink_scale*=10;
         }
 
         //指数部
@@ -209,7 +210,7 @@ int main()
 {
     char buff[128];
     char buff2[128];
-    if(1){
+    if(0){
         printf("効率確認\n");
         int looptimes=100E7;
         double data=15.9672;
@@ -242,7 +243,7 @@ int main()
         printf("%s\n",buff2);
     }
 
-    if(0){
+    if(1){
         printf("ランダム入力 正確性確認\n");
         for(int times=0;times<304;times++){
             long double max=pow(10,times);
@@ -253,7 +254,8 @@ int main()
         
             for (int i = 0; i < 1000; i++) {
                 double data=dist(gen);
-                int size1=Double2Ascii(buff,data,4,'.');
+                // int size1=Double2Ascii(buff,data,4,'.');
+                int size1=useTemplate::Double2Ascii<4>(buff,data,'.');
                 int size2=sprintf(buff2,"%11.4E",data);
                 if(' '!=buff2[0]){
                     //最初のスペースを揃うために
@@ -280,7 +282,7 @@ int main()
         }
     }
 
-    if(1){
+    if(0){
         printf("固定入力 正確性確認");
         //11桁の数字で確認
         int err_cnt=0;
