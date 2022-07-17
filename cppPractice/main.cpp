@@ -11,10 +11,10 @@ typedef unsigned int UINT;
 #define WRITEBUF(buf,data)  do{*buff=data;buff++;}while(0)
 
 namespace useTemplate{
-    template<int Fractional_Digits>
+    template<int Decimal_Place>
     int Double2Ascii(char* buff,double x,char separator){
-        static const double ENLARGE_SCALE=pow(10,Fractional_Digits);     //xの有効数値を小数点の左に持っていくためのスケール係数
-        static const double SHRINK_SCALE=pow(10,-1*Fractional_Digits);   //xの有効数値を小数点の右に持っていくためのスケール係数
+        static const double ENLARGE_SCALE=pow(10,Decimal_Place);     //xの有効数値を小数点の左に持っていくためのスケール係数
+        static const double SHRINK_SCALE=pow(10,-1*Decimal_Place);   //xの有効数値を小数点の右に持っていくためのスケール係数
 
         double shrink_scale=SHRINK_SCALE;   //staticをそのまま使って計算すると遅くなるので、ローカルにコピーする
         double enlarge_scale=ENLARGE_SCALE;
@@ -73,7 +73,7 @@ namespace useTemplate{
         //小数部
         //TODO 1.0024999999999999*100000が10025.000000000000になることを直す必要ある
         x*=(enlarge_scale*10);
-        for(int i=0;i<Fractional_Digits;i++){
+        for(int i=0;i<Decimal_Place;i++){
             digit=(INT64)(x*shrink_scale)%10;
             WRITEBUF(buff,digit+'0');
             shrink_scale*=10;
@@ -204,9 +204,9 @@ int main()
 {
     char buff[128];
     char buff2[128];
-    if(1){
+    if(0){
         printf("効率確認\n");
-        int looptimes=15E7;
+        int looptimes=100E7;
         double data=15.9672;
         time_t start=time(NULL);
         for(int i=0;i<looptimes;i++){
@@ -237,7 +237,7 @@ int main()
         printf("%s\n",buff2);
     }
 
-    if(0){
+    if(1){
         printf("ランダム入力 正確性確認\n");
         for(int times=0;times<304;times++){
             long double max=pow(10,times);
