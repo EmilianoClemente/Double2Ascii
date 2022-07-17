@@ -9,7 +9,6 @@ typedef long long INT64;
 typedef unsigned int UINT;
 
 #define WRITEBUF(buf,data)  do{*buff=data;buff++;}while(0)
-#define NORMAL_ROUND
 
 int Double2Ascii(char* buff,double x,UINT fractional_digits,char separator){
     const char* buff_sp=buff;
@@ -56,15 +55,7 @@ int Double2Ascii(char* buff,double x,UINT fractional_digits,char separator){
     double multiple=lookup_multiple[fractional_digits];
     double multiple_reciprocal=lookup_multiple_reciprocal[fractional_digits];
 
-#ifdef  NORMAL_ROUND
-    double adjust=0.5*multiple_reciprocal;  //四捨五入調整用
-    x=x+adjust;
-#endif
-#ifdef  ROUND_TO_EVEN
-    double scale=x_origin/x;
-    double throw_num=0.5*scale/multiple;
-    x=(x_origin+throw_num)/scale;
-#endif
+    x=x+0.5*multiple_reciprocal;    //四捨五入
 
     //四捨五入後、10以上になる場合、10以下にする
     while(x>=10){
@@ -182,7 +173,7 @@ int main()
         }
     }
 
-    if(0){
+    if(1){
         printf("固定入力 正確性確認");
         //11桁の数字で確認
         int err_cnt=0;
@@ -196,17 +187,15 @@ int main()
             // if(true){
                 err_cnt++;
                 if(err<0.0001){
-                    continue;
+                    // continue;
                 }
                 // printf("err=%f,rate=%.8E,err_cnt=%d,",err,(double)(err_cnt/(i-1000000000+1)),err_cnt);
                 printf("%s,size=%d,",buff,size1);
                 printf("%s,size=%d,",buff2,size2);
                 printf("%.7f,",data);
                 printf("diff!\n");
-                if(0.0!=err){
-                    printf("bug num=%d\n",i);
-                    // _ASSERT(false);
-                }
+                printf("bug num=%d\n",i);
+                // _ASSERT(false);
             }/*else{
                 printf("%s,size=%d,",buff,size1);
                 printf("%s,size=%d,",buff2,size2);
