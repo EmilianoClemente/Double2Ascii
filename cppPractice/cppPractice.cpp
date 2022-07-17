@@ -10,6 +10,112 @@ typedef unsigned int UINT;
 
 #define WRITEBUF(buf,data)  do{*buff=data;buff++;}while(0)
 
+namespace useTemplate{
+    template<int base,int N>
+    inline double QuickPow(){
+        static double cache=0;
+        static bool isInitilized=false;
+        if(!isInitilized){
+            cache=pow(base,N);
+            isInitilized=true;
+        }
+        return cache;
+    }
+
+    template<int Fractional_Digits>
+    int Double2Ascii(char* buff,double x,char separator){
+        static const double scale=QuickPow<10,Fractional_Digits>();     //xの有効数値を小数点の左に持っていくためのスケール係数
+        static const double multiple_reciprocal_initializer=QuickPow<10,-1*Fractional_Digits>();
+
+        const char* buff_sp=buff;
+        const double x_origin=x;
+        int digit=0;
+        if(true!=isfinite(x)){
+            //この判定をなくせば、150M回のloop時間が6s->4sになる
+            WRITEBUF(buff,'?'); //TODO 適切な文字を入れる
+            WRITEBUF(buff,0);
+            //null文字はカウントしない
+            return (buff-buff_sp-1);
+        }
+        char sign=' ';
+        if(x<0){
+            //0以下の時、整数にし、符号を変える
+            x=-x;
+            sign='-';
+        }
+        WRITEBUF(buff,sign);
+
+        //仮数部を1から10の間になるように調整
+        int exponent=0;
+        if(x>0){
+            while(x>=1E10){
+                //大きい数字来るときの高速化対策
+                x*=1E-10;
+                exponent+=10;
+            }
+            while (x >= 10) {
+                x *= 0.1;
+                exponent++;
+            }
+            while (x < 1) {
+                x *= 10;
+                exponent--;
+            }
+        }
+
+        //四捨五入処理
+
+        x=x+0.5*multiple_reciprocal_initializer;    //四捨五入
+
+        //四捨五入後、10以上になる場合、10以下にする
+        while(x>=10){
+            x*=0.1;
+            exponent++;
+        }
+
+        //整数部
+        digit=(int)x%10;
+        WRITEBUF(buff,digit+'0');
+
+        WRITEBUF(buff,separator);   //小数点を書く
+
+        //小数部
+        //TODO 1.0024999999999999*100000が10025.000000000000になることを直す必要ある
+        double multiple_reciprocal=multiple_reciprocal_initializer;
+        x*=(scale*10);
+        for(int i=0;i<Fractional_Digits;i++){
+            digit=(INT64)(x*multiple_reciprocal)%10;
+            WRITEBUF(buff,digit+'0');
+            multiple_reciprocal*=10;
+        }
+
+        //指数部
+        WRITEBUF(buff,'E');
+        //符号
+        if(exponent<0){
+            exponent=-exponent;
+            WRITEBUF(buff,'-');
+        }else{
+            WRITEBUF(buff,'+');
+        }
+
+        if(exponent>=100){
+            //指数部が3桁の時
+            digit=(exponent/100)%10;
+            WRITEBUF(buff,digit+'0');
+        }
+        digit=(exponent/10)%10;
+        WRITEBUF(buff,digit+'0');
+        digit=exponent%10;
+        WRITEBUF(buff,digit+'0');
+
+        WRITEBUF(buff,0);
+
+        //NULL文字はカウントしない
+        return (buff - buff_sp-1);
+    }
+}
+
 int Double2Ascii(char* buff,double x,UINT fractional_digits,char separator){
     const char* buff_sp=buff;
     const double x_origin=x;
@@ -110,13 +216,19 @@ int main()
     char buff2[128];
     if(1){
         printf("効率確認\n");
-        int looptimes=15E7;
+        int looptimes=60E7;
         double data=15.9672;
         time_t start=time(NULL);
         for(int i=0;i<looptimes;i++){
-            Double2Ascii(buff,data,4,'.');
+            useTemplate::Double2Ascii<4>(buff,data,'.');
         }
         time_t end=time(NULL);
+        printf("looptimes=%d,template version cost %lld s\n",looptimes,end-start);
+        start=time(NULL);
+        for(int i=0;i<looptimes;i++){
+            Double2Ascii(buff,data,4,'.');
+        }
+        end=time(NULL);
         printf("looptimes=%d,Double2Ascii cost %lld s\n",looptimes,end-start);
         start=time(NULL);
         for(int i=0;i<looptimes;i++){
