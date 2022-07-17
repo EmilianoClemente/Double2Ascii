@@ -18,18 +18,15 @@ namespace useTemplate{
 
         double shrink_scale=SHRINK_SCALE;   //staticをそのまま使って計算すると遅くなるので、ローカルにコピーする
         double enlarge_scale=ENLARGE_SCALE;
-
         const char* buff_sp=buff;
-        const double x_origin=x;
-        int digit=0;
-        if(true!=isfinite(x)){
-            //この判定をなくせば、150M回のloop時間が6s->4sになる
-            WRITEBUF(buff,'?'); //TODO 適切な文字を入れる
-            WRITEBUF(buff,0);
-            //null文字はカウントしない
-            return (buff-buff_sp-1);
-        }
+        char decimal=0;
         char sign=' ';
+        int exponent=0;
+
+        if(!isfinite(x)){
+            WRITEBUF(buff,'?'); //TODO 適切な文字を入れる
+            goto FINALLY;
+        }
         if(x<0){
             //0以下の時、整数にし、符号を変える
             x=-x;
@@ -38,7 +35,6 @@ namespace useTemplate{
         WRITEBUF(buff,sign);
 
         //仮数部を1から10の間になるように調整
-        int exponent=0;
         if(x>0){
             while(x>=1E10){
                 //大きい数字来るときの高速化対策
@@ -65,8 +61,8 @@ namespace useTemplate{
         }
 
         //整数部
-        digit=(int)x%10;
-        WRITEBUF(buff,digit+'0');
+        decimal=(int)x%10;
+        WRITEBUF(buff,decimal+'0');
 
         WRITEBUF(buff,separator);   //小数点を書く
 
@@ -74,8 +70,8 @@ namespace useTemplate{
         //TODO 1.0024999999999999*100000が10025.000000000000になることを直す必要ある
         x*=(enlarge_scale*10);
         for(int i=0;i<Decimal_Place;i++){
-            digit=(INT64)(x*shrink_scale)%10;
-            WRITEBUF(buff,digit+'0');
+            decimal=(INT64)(x*shrink_scale)%10;
+            WRITEBUF(buff,decimal+'0');
             shrink_scale*=10;
         }
 
@@ -91,14 +87,15 @@ namespace useTemplate{
 
         if(exponent>=100){
             //指数部が3桁の時
-            digit=(exponent/100)%10;
-            WRITEBUF(buff,digit+'0');
+            decimal=(exponent/100)%10;
+            WRITEBUF(buff,decimal+'0');
         }
-        digit=(exponent/10)%10;
-        WRITEBUF(buff,digit+'0');
-        digit=exponent%10;
-        WRITEBUF(buff,digit+'0');
+        decimal=(exponent/10)%10;
+        WRITEBUF(buff,decimal+'0');
+        decimal=exponent%10;
+        WRITEBUF(buff,decimal+'0');
 
+FINALLY:
         WRITEBUF(buff,0);
 
         //NULL文字はカウントしない
@@ -109,7 +106,7 @@ namespace useTemplate{
 int Double2Ascii(char* buff,double x,UINT fractional_digits,char separator){
     const char* buff_sp=buff;
     const double x_origin=x;
-    int digit=0;
+    int decimal=0;
     if(true!=isfinite(x)){
         WRITEBUF(buff,'?'); //TODO 適切な文字を入れる
         WRITEBUF(buff,0);
@@ -160,8 +157,8 @@ int Double2Ascii(char* buff,double x,UINT fractional_digits,char separator){
     }
 
     //整数部
-    digit=(int)x%10;
-    WRITEBUF(buff,digit+'0');
+    decimal=(int)x%10;
+    WRITEBUF(buff,decimal+'0');
 
     WRITEBUF(buff,separator);   //小数点を書く
 
@@ -169,8 +166,8 @@ int Double2Ascii(char* buff,double x,UINT fractional_digits,char separator){
     //TODO 1.0024999999999999*100000が10025.000000000000になることを直す必要ある
     x*=multiple;
     for(int i=0;i<fractional_digits;i++){
-        digit=(INT64)(x*10*multiple_reciprocal)%10;
-        WRITEBUF(buff,digit+'0');
+        decimal=(INT64)(x*10*multiple_reciprocal)%10;
+        WRITEBUF(buff,decimal+'0');
         multiple_reciprocal*=10;
     }
 
@@ -186,13 +183,13 @@ int Double2Ascii(char* buff,double x,UINT fractional_digits,char separator){
 
     if(exponent>=100){
         //指数部が3桁の時
-        digit=(exponent/100)%10;
-        WRITEBUF(buff,digit+'0');
+        decimal=(exponent/100)%10;
+        WRITEBUF(buff,decimal+'0');
     }
-    digit=(exponent/10)%10;
-    WRITEBUF(buff,digit+'0');
-    digit=exponent%10;
-    WRITEBUF(buff,digit+'0');
+    decimal=(exponent/10)%10;
+    WRITEBUF(buff,decimal+'0');
+    decimal=exponent%10;
+    WRITEBUF(buff,decimal+'0');
 
     WRITEBUF(buff,0);
 
@@ -204,9 +201,9 @@ int main()
 {
     char buff[128];
     char buff2[128];
-    if(0){
+    if(1){
         printf("効率確認\n");
-        int looptimes=100E7;
+        int looptimes=15E7;
         double data=15.9672;
         time_t start=time(NULL);
         for(int i=0;i<looptimes;i++){
@@ -237,7 +234,7 @@ int main()
         printf("%s\n",buff2);
     }
 
-    if(1){
+    if(0){
         printf("ランダム入力 正確性確認\n");
         for(int times=0;times<304;times++){
             long double max=pow(10,times);
@@ -265,6 +262,7 @@ int main()
                     printf("err=%f",err);
                     printf("%s,size=%d,",buff,size1);
                     printf("%s,size=%d,",buff2,size2);
+                    printf("%.11f,",data);
                     printf("diff!\n");
                     _ASSERT(false);
                 }else{
