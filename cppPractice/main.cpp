@@ -9,6 +9,7 @@ typedef long long INT64;
 typedef unsigned int UINT;
 
 #define WRITEBUF(buf,data)  do{*buff=data;buff++;}while(0)
+#define DECIMAL_ONES(x) ((INT64)(x)%10)
 
 namespace useTemplate{
     template<int Decimal_Place>
@@ -23,7 +24,7 @@ namespace useTemplate{
         char sign=' ';
         int exponent=0;
 
-        if(!isfinite(x)){
+        if(0==_finite(x)){
             WRITEBUF(buff,'?'); //TODO 適切な文字を入れる
             goto FINALLY;
         }
@@ -61,7 +62,7 @@ namespace useTemplate{
         }
 
         //整数部
-        decimal=(int)x%10;
+        decimal=DECIMAL_ONES(x);
         WRITEBUF(buff,decimal+'0');
 
         WRITEBUF(buff,separator);   //小数点を書く
@@ -70,7 +71,7 @@ namespace useTemplate{
         //TODO 1.0024999999999999*100000が10025.000000000000になることを直す必要ある
         x*=(enlarge_scale*10);
         for(int i=0;i<Decimal_Place;i++){
-            decimal=(INT64)(x*shrink_scale)%10;
+            decimal=DECIMAL_ONES(x*shrink_scale);
             WRITEBUF(buff,decimal+'0');
             shrink_scale*=10;
         }
@@ -87,12 +88,12 @@ namespace useTemplate{
 
         if(exponent>=100){
             //指数部が3桁の時
-            decimal=(exponent/100)%10;
+            decimal=DECIMAL_ONES(exponent/100);
             WRITEBUF(buff,decimal+'0');
         }
-        decimal=(exponent/10)%10;
+        decimal=DECIMAL_ONES(exponent/10);
         WRITEBUF(buff,decimal+'0');
-        decimal=exponent%10;
+        decimal=DECIMAL_ONES(exponent);
         WRITEBUF(buff,decimal+'0');
 
 FINALLY:
