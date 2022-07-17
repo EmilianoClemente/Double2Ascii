@@ -5,19 +5,21 @@
 #include <iostream>
 #pragma warning(disable:4996)
 typedef const char* FILENAME;
-typedef long long int64;
+typedef long long INT64;
+typedef unsigned int UINT;
 
 #define WRITEBUF(buf,data)  do{*buff=data;buff++;}while(0)
 #define NORMAL_ROUND
 
-int Double2Ascii(char* buff,double x,int fractional_digits,char separator){
-    const char* startAdr=buff;
+int Double2Ascii(char* buff,double x,UINT fractional_digits,char separator){
+    const char* buff_sp=buff;
+    const double x_origin=x;
     int digit=0;
     if(true!=isfinite(x)){
         WRITEBUF(buff,'?'); //TODO 適切な文字を入れる
         WRITEBUF(buff,0);
         //null文字はカウントしない
-        return (buff-startAdr-1);
+        return (buff-buff_sp-1);
     }
     char sign=' ';
     if(x<0){
@@ -46,31 +48,22 @@ int Double2Ascii(char* buff,double x,int fractional_digits,char separator){
     }
 
     //四捨五入処理
-#ifdef  NORMAL_ROUND
-    double adjust=0.5;  //四捨五入調整用
-    for(int i=0;i<fractional_digits;i++){
-        adjust*=0.1;
+    static const double lookup_multiple[]={1E0,1E1,1E2,1E3,1E4,1E5,1E6,1E7,1E8,1E9};
+    static const double lookup_multiple_reciprocal[]={1E0,1E-1,1E-2,1E-3,1E-4,1E-5,1E-6,1E-7,1E-8,1E-9};
+    if(fractional_digits>=sizeof(lookup_multiple)/sizeof(lookup_multiple[0])){
+        fractional_digits=0;
     }
+    double multiple=lookup_multiple[fractional_digits];
+    double multiple_reciprocal=lookup_multiple_reciprocal[fractional_digits];
+
+#ifdef  NORMAL_ROUND
+    double adjust=0.5*multiple_reciprocal;  //四捨五入調整用
     x=x+adjust;
 #endif
 #ifdef  ROUND_TO_EVEN
-    int adjust_multipy=1;
-    for(int i=0;i<fractional_digits;i++){
-        adjust_multipy*=10;
-    }
-    int second_last_eff_digit=(int64)(x*adjust_multipy/10+0.5)%10;
-    int last_eff_digit=(int64)(x*adjust_multipy)%10;
-    int throw_digit=(int64)(x*adjust_multipy*10)%10;
-    if(5==throw_digit){
-        if(0==second_last_eff_digit%2){
-            //偶数なら捨てるので、何もしない
-        }else{
-            //奇数
-            x=x+(0.5/adjust_multipy);
-        }
-    }else{
-        x=x+(0.5/adjust_multipy);
-    }
+    double scale=x_origin/x;
+    double throw_num=0.5*scale/multiple;
+    x=(x_origin+throw_num)/scale;
 #endif
 
     //四捨五入後、10以上になる場合、10以下にする
@@ -86,58 +79,13 @@ int Double2Ascii(char* buff,double x,int fractional_digits,char separator){
     WRITEBUF(buff,separator);   //小数点を書く
 
     //小数部
-#if 0
-    int multiple=10;    //倍数
-    for(int i=0;i<fractional_digits;i++){
-        digit=(int64)(x*multiple)%10;
-        WRITEBUF(buff,digit+'0');
-        multiple*=10;
-    }
-#else
-    double multiple=1;
-    switch(fractional_digits){
-        case 0:
-            multiple=1E0;
-            break;
-        case 1:
-            multiple=1E1;
-            break;
-        case 2:
-            multiple=1E2;
-            break;
-        case 3:
-            multiple=1E3;
-            break;
-        case 4:
-            multiple=1E4;
-            break;
-        case 5:
-            multiple=1E5;
-            break;
-        case 6:
-            multiple=1E6;
-            break;
-        case 7:
-            multiple=1E7;
-            break;
-        case 8:
-            multiple=1E8;
-            break;
-        case 9:
-            multiple=1E9;
-            break;
-        default:
-            fractional_digits=0;
-            multiple=1E0;
-            break;
-    }
+    //TODO 1.0024999999999999*100000が10025.000000000000になることを直す必要ある
     x*=multiple;
     for(int i=0;i<fractional_digits;i++){
-        digit=(int64)(x*10/multiple)%10;
+        digit=(INT64)(x*10*multiple_reciprocal)%10;
         WRITEBUF(buff,digit+'0');
-        multiple*=0.1;
+        multiple_reciprocal*=10;
     }
-#endif
 
     //指数部
     WRITEBUF(buff,'E');
@@ -162,14 +110,14 @@ int Double2Ascii(char* buff,double x,int fractional_digits,char separator){
     WRITEBUF(buff,0);
 
     //NULL文字はカウントしない
-    return (buff - startAdr-1);
+    return (buff - buff_sp-1);
 }
 
 int main()
 {
     char buff[128];
     char buff2[128];
-    if(0){
+    if(1){
         printf("効率確認\n");
         int looptimes=15E7;
         double data=15.9672;
@@ -187,9 +135,9 @@ int main()
         printf("looptimes=%d,sprintf cost %lld s\n",looptimes,end-start);
     }
 
-    if(1){
+    if(0){
         printf("個別確認\n");
-        double data=(double)(9779950)/1E-5;
+        double data=(double)(1002450000)/1E-5;
         Double2Ascii(buff,data,4,'.');
         printf("%s\n",buff);
         sprintf(buff2,"%11.4E",data);
@@ -234,10 +182,11 @@ int main()
         }
     }
 
-    if(1){
+    if(0){
         printf("固定入力 正確性確認");
         //11桁の数字で確認
-        for(int i=0;i<10000000000;i++){
+        int err_cnt=0;
+        for(int i=1000000000;i<10000000000;i++){
             double data=(double)i/1E-5;
             int size1=Double2Ascii(buff,data,4,'.');
             int size2=sprintf(buff2,"%11.4E",data);
@@ -245,12 +194,14 @@ int main()
             if(err<0)   err=err*-1;
             if((0!=strcmp(buff,buff2))||(size1!=size2)){
             // if(true){
+                err_cnt++;
                 if(err<0.0001){
                     continue;
                 }
-                printf("err=%f",err);
+                // printf("err=%f,rate=%.8E,err_cnt=%d,",err,(double)(err_cnt/(i-1000000000+1)),err_cnt);
                 printf("%s,size=%d,",buff,size1);
                 printf("%s,size=%d,",buff2,size2);
+                printf("%.7f,",data);
                 printf("diff!\n");
                 if(0.0!=err){
                     printf("bug num=%d\n",i);
