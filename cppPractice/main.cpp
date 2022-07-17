@@ -13,12 +13,7 @@ typedef unsigned int UINT;
 namespace useTemplate{
     template<int base,int N>
     inline double QuickPow(){
-        static double cache=0;
-        static bool isInitilized=false;
-        if(!isInitilized){
-            cache=pow(base,N);
-            isInitilized=true;
-        }
+        static double cache=pow(base,N);
         return cache;
     }
 
@@ -216,7 +211,7 @@ int main()
     char buff2[128];
     if(1){
         printf("効率確認\n");
-        int looptimes=60E7;
+        int looptimes=100E7;
         double data=15.9672;
         time_t start=time(NULL);
         for(int i=0;i<looptimes;i++){
