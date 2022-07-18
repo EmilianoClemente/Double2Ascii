@@ -23,6 +23,10 @@ const char* GetExponentFormat(int decimal_place){
 namespace useTemplate{
     template<int Decimal_Place>
     int Double2Ascii(char* buff,double x,char separator){
+#if 0       //最後の部分を落とせば、sprintfと同じ四捨五入ができるようになる
+        char*   data=(char*)(&x);
+        data[0]=0;
+#endif
         static const double ENLARGE_SCALE=pow(10,Decimal_Place);     //xの有効数値を小数点の左に持っていくためのスケール係数
         static const double SHRINK_SCALE=pow(10,-1*Decimal_Place);   //xの有効数値を小数点の右に持っていくためのスケール係数
 
@@ -237,10 +241,11 @@ int main()
         printf("looptimes=%d,sprintf cost %lld s\n",looptimes,end-start);
     }
 
-    if(0){
+    if(1){
         printf("個別確認\n");
         double data=(double)(1002450000)/1E-5;
-        Double2Ascii(buff,data,DECIMAL_PLACE,'.');
+        // Double2Ascii(buff,data,DECIMAL_PLACE,'.');
+        useTemplate::Double2Ascii<DECIMAL_PLACE>(buff,data,'.');
         printf("%s\n",buff);
         sprintf(buff2,"%11.4E",data);
         printf("%s\n",buff2);
@@ -286,14 +291,16 @@ int main()
         }
     }
 
-    if(1){
+    if(0){
         printf("固定入力 正確性確認");
         //11桁の数字で確認
         int err_cnt=0;
         for(int i=1000000000;i<10000000000;i++){
             double data=(double)i/1E-5;
-            int size1=Double2Ascii(buff,data,DECIMAL_PLACE,'.');
+            // int size1=Double2Ascii(buff,data,DECIMAL_PLACE,'.');
+            int size1=useTemplate::Double2Ascii<DECIMAL_PLACE>(buff,data,'.');
             int size2=sprintf(buff2,format,data);
+            // int size2=Double2Ascii(buff2,data,DECIMAL_PLACE,'.');
             double err=(atof(buff)-atof(buff2))/atof(buff);     //誤差
             if(err<0)   err=err*-1;
             if((0!=strcmp(buff,buff2))||(size1!=size2)){
@@ -306,6 +313,8 @@ int main()
                 printf("%s,size=%d,",buff,size1);
                 printf("%s,size=%d,",buff2,size2);
                 printf("%.7f,",data);
+                INT64* pDATA=(INT64*)(&data);
+                printf("%llx,",*pDATA);
                 printf("diff!\n");
                 printf("bug num=%d\n",i);
                 // _ASSERT(false);
