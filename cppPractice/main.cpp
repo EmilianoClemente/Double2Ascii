@@ -243,12 +243,16 @@ int main()
 
     if(1){
         printf("個別確認\n");
-        double data=(double)(1002450000)/1E-5;
+        double data;
+        data=100244999999999.984375;    //indivisible sample
+        // data=173725700000000.000000;     //example data for testing banker's round
         // Double2Ascii(buff,data,DECIMAL_PLACE,'.');
         useTemplate::Double2Ascii<DECIMAL_PLACE>(buff,data,'.');
         printf("%s\n",buff);
         sprintf(buff2,"%11.4E",data);
         printf("%s\n",buff2);
+        INT64* pDATA=(INT64*)(&data);
+        printf("%f,%llx,",data,*pDATA);
     }
 
     if(0){
