@@ -10,6 +10,15 @@ typedef unsigned int UINT;
 
 #define WRITEBUF(buf,data)  do{*buff=data;buff++;}while(0)
 #define DECIMAL_ONES(x) ((INT64)(x)%10)
+#define DECIMAL_PLACE   4
+
+template<int plus>
+const char* GetExponentFormat(int decimal_place){
+    static char format[10];
+    format[0]='%';
+    sprintf(&format[1],"%d.%dE",decimal_place+7+plus,decimal_place);
+    return format; 
+}
 
 namespace useTemplate{
     template<int Decimal_Place>
@@ -202,25 +211,27 @@ int main()
 {
     char buff[128];
     char buff2[128];
-    if(1){
+    const char* format=GetExponentFormat<0>(DECIMAL_PLACE);
+    const char* formatPlus1=GetExponentFormat<1>(DECIMAL_PLACE);
+    if(0){
         printf("効率確認\n");
-        int looptimes=15E7;
+        int looptimes=30E7;
         double data=15.9672;
         time_t start=time(NULL);
         for(int i=0;i<looptimes;i++){
-            useTemplate::Double2Ascii<4>(buff,data,'.');
+            useTemplate::Double2Ascii<DECIMAL_PLACE>(buff,data,'.');
         }
         time_t end=time(NULL);
         printf("looptimes=%d,template version cost %lld s\n",looptimes,end-start);
         start=time(NULL);
         for(int i=0;i<looptimes;i++){
-            Double2Ascii(buff,data,4,'.');
+            Double2Ascii(buff,data,DECIMAL_PLACE,'.');
         }
         end=time(NULL);
         printf("looptimes=%d,Double2Ascii cost %lld s\n",looptimes,end-start);
         start=time(NULL);
         for(int i=0;i<looptimes;i++){
-            sprintf(buff, "%11.4E", data);
+            sprintf(buff, format, data);
         }
         end=time(NULL);
         printf("looptimes=%d,sprintf cost %lld s\n",looptimes,end-start);
@@ -229,7 +240,7 @@ int main()
     if(0){
         printf("個別確認\n");
         double data=(double)(1002450000)/1E-5;
-        Double2Ascii(buff,data,4,'.');
+        Double2Ascii(buff,data,DECIMAL_PLACE,'.');
         printf("%s\n",buff);
         sprintf(buff2,"%11.4E",data);
         printf("%s\n",buff2);
@@ -247,11 +258,11 @@ int main()
             for (int i = 0; i < 1000; i++) {
                 double data=dist(gen);
                 // int size1=Double2Ascii(buff,data,4,'.');
-                int size1=useTemplate::Double2Ascii<4>(buff,data,'.');
-                int size2=sprintf(buff2,"%11.4E",data);
+                int size1=useTemplate::Double2Ascii<DECIMAL_PLACE>(buff,data,'.');
+                int size2=sprintf(buff2,format,data);
                 if(' '!=buff2[0]){
                     //最初のスペースを揃うために
-                    size2=sprintf(buff2,"%12.4E",data);
+                    size2=sprintf(buff2,formatPlus1,data);
                 }
                 double err=(atof(buff)-atof(buff2))/atof(buff);     //誤差
                 if(err<0)   err=err*-1;
@@ -275,14 +286,14 @@ int main()
         }
     }
 
-    if(0){
+    if(1){
         printf("固定入力 正確性確認");
         //11桁の数字で確認
         int err_cnt=0;
         for(int i=1000000000;i<10000000000;i++){
             double data=(double)i/1E-5;
-            int size1=Double2Ascii(buff,data,4,'.');
-            int size2=sprintf(buff2,"%11.4E",data);
+            int size1=Double2Ascii(buff,data,DECIMAL_PLACE,'.');
+            int size2=sprintf(buff2,format,data);
             double err=(atof(buff)-atof(buff2))/atof(buff);     //誤差
             if(err<0)   err=err*-1;
             if((0!=strcmp(buff,buff2))||(size1!=size2)){
