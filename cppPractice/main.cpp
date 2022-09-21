@@ -1,4 +1,5 @@
-﻿#include <time.h>
+﻿#include <corecrt_math.h>
+#include <time.h>
 #include <random>
 #include <iostream>
 #include "double2ascii.h"
@@ -18,9 +19,32 @@ int main()
     char buff2[128];
     const char* format=GetExponentFormat<0>(DECIMAL_PLACE);
     const char* formatPlus1=GetExponentFormat<1>(DECIMAL_PLACE);
+    if(0){
+        printf("べき乗が違う入力で効率を確認\n");
+        for (double exponent=-100;exponent<100;exponent+=10){
+            /* べき乗が違う入力で効率を確認 */
+            //int looptimes=(int)30E7;
+            //double data=15.9672;
+            printf("exponent=%f\n",exponent);
+            int looptimes = 1E7;
+            double data = pow(10.0,exponent);
+            time_t start=time(NULL);
+            for(int i=0;i<looptimes;i++){
+                Double2Ascii<DECIMAL_PLACE>(buff,data,'.');
+            }
+            time_t end=time(NULL);
+            printf("looptimes=%d,template version cost %lld s\n",looptimes,end-start);
+        }
+       // start=time(NULL);
+       // for(int i=0;i<looptimes;i++){
+       //     sprintf(buff, format, data);
+       // }
+       // end=time(NULL);
+       // printf("looptimes=%d,sprintf cost %lld s\n",looptimes,end-start);
+    }
     if(1){
         printf("効率確認\n");
-        int looptimes=30E7;
+        int looptimes=(int)30E7;
         double data=15.9672;
         time_t start=time(NULL);
         for(int i=0;i<looptimes;i++){
@@ -28,12 +52,12 @@ int main()
         }
         time_t end=time(NULL);
         printf("looptimes=%d,template version cost %lld s\n",looptimes,end-start);
-        start=time(NULL);
-        for(int i=0;i<looptimes;i++){
-            sprintf(buff, format, data);
-        }
-        end=time(NULL);
-        printf("looptimes=%d,sprintf cost %lld s\n",looptimes,end-start);
+       // start=time(NULL);
+       // for(int i=0;i<looptimes;i++){
+       //     sprintf(buff, format, data);
+       // }
+       // end=time(NULL);
+       // printf("looptimes=%d,sprintf cost %lld s\n",looptimes,end-start);
     }
 
     if(0){
@@ -62,7 +86,7 @@ int main()
             for (int i = 0; i < 1000; i++) {
                 double data=dist(gen);
                 // int size1=Double2Ascii(buff,data,4,'.');
-                int size1=Double2Ascii<DECIMAL_PLACE>(buff,data,'.');
+                size_t size1=Double2Ascii<DECIMAL_PLACE>(buff,data,'.');
                 int size2=sprintf(buff2,format,data);
                 if(' '!=buff2[0]){
                     //最初のスペースを揃うために
@@ -76,7 +100,7 @@ int main()
                         continue;
                     }
                     printf("err=%f",err);
-                    printf("%s,size=%d,",buff,size1);
+                    printf("%s,size=%lld,",buff,size1);
                     printf("%s,size=%d,",buff2,size2);
                     printf("%.11f,",data);
                     printf("diff!\n");
@@ -97,7 +121,7 @@ int main()
         for(INT64 i=1000000000;i<10000000000;i++){
             double data=(double)i/1E-5;
             // int size1=Double2Ascii(buff,data,DECIMAL_PLACE,'.');
-            int size1=Double2Ascii<DECIMAL_PLACE>(buff,data,'.');
+            size_t size1=Double2Ascii<DECIMAL_PLACE>(buff,data,'.');
             int size2=sprintf(buff2,format,data);
             // int size2=Double2Ascii(buff2,data,DECIMAL_PLACE,'.');
             double err=(atof(buff)-atof(buff2))/atof(buff);     //誤差
@@ -109,7 +133,7 @@ int main()
                     // continue;
                 }
                 // printf("err=%f,rate=%.8E,err_cnt=%d,",err,(double)(err_cnt/(i-1000000000+1)),err_cnt);
-                printf("%s,size=%d,",buff,size1);
+                printf("%s,size=%lld,",buff,size1);
                 printf("%s,size=%d,",buff2,size2);
                 printf("%.7f,",data);
                 INT64* pDATA=(INT64*)(&data);

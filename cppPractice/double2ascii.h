@@ -7,7 +7,7 @@ typedef unsigned int UINT;
 #define DECIMAL_ONES(x) ((INT64)(x)%10)
 #define DECIMAL_PLACE   4
 template<int Decimal_Place>
-int Double2Ascii(char* buff,double x,char separator){
+size_t Double2Ascii(char* buff,double x,char separator){
     /*xの有効数値を小数点の左に持っていくためのスケール係数*/
     static const double ENLARGE_SCALE=pow(10,Decimal_Place);
     /*xの有効数値を小数点の右に持っていくためのスケール係数*/
@@ -38,6 +38,11 @@ int Double2Ascii(char* buff,double x,char separator){
             //大きい数字来るときの高速化対策
             x*=1E-10;
             exponent+=10;
+        }
+        while(x<=1E-10){
+            //小さい数字来るときの高速化対策
+            x*=1E10;
+            exponent-=10;
         }
         while (x >= 10) {
             x *= 0.1;
