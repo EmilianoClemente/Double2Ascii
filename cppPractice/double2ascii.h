@@ -6,41 +6,48 @@ typedef unsigned int UINT;
 #define WRITEBUF(buf,data)  do{*buff=data;buff++;}while(0)
 #define DECIMAL_ONES(x) ((INT64)(x)%10)
 #define DECIMAL_PLACE   4
+
+template<int N>
+struct powOf10
+{
+    enum{value = 10*powOf10<N-1>::value};
+};
+
+template<>
+struct powOf10<0>
+{
+    enum{value = 1};
+};
+
 template<int Decimal_Place>
 size_t Double2Ascii(char* buff,double x,char separator){
-    /*xの有効数値を小数点の左に持っていくためのスケール係数*/
-    static const double ENLARGE_SCALE=pow(10,Decimal_Place);
-    /*xの有効数値を小数点の右に持っていくためのスケール係数*/
-    static const double SHRINK_SCALE=pow(10,-1*Decimal_Place);
-
-    /*staticをそのまま使って計算すると遅くなるので、ローカルにコピーする*/
-    double shrink_scale=SHRINK_SCALE;
-    double enlarge_scale=ENLARGE_SCALE;
     const char* buff_sp=buff;
     char decimal=0;
     char sign=' ';
     int exponent=0;
+    int effective=0;
+    char* p_write=(char*)0;
 
     if(0==_finite(x)){
-        WRITEBUF(buff,'?'); //TODO 適切な文字を入れる
-        goto FINALLY;
+        *buff = 0;
+        return 0;
     }
     if(x<0){
-        //0以下の時、整数にし、符号を変える
+        //0�ȉ��̎��A�����ɂ��A������ς���
         x=-x;
         sign='-';
     }
     WRITEBUF(buff,sign);
 
-    //仮数部を1から10の間になるように調整
+    //��������1����10�̊ԂɂȂ�悤�ɒ���
     if(x>0){
         while(x>=1E10){
-            //大きい数字来るときの高速化対策
+            //�傫����������Ƃ��̍������΍�
             x*=1E-10;
             exponent+=10;
         }
         while(x<=1E-10){
-            //小さい数字来るときの高速化対策
+            //��������������Ƃ��̍������΍�
             x*=1E10;
             exponent-=10;
         }
@@ -54,33 +61,24 @@ size_t Double2Ascii(char* buff,double x,char separator){
         }
     }
 
-    //四捨五入処理
-    x=x+0.5*shrink_scale;
-
-    //四捨五入後、10以上になる場合、10以下にする
-    while(x>=10){
-        x*=0.1;
-        exponent++;
+    effective =(int)(x * powOf10<Decimal_Place>::value + 0.5);
+    if(effective>=powOf10<Decimal_Place+1>::value){
+        x *= 0.1;
+        exponent ++;
     }
 
-    //整数部
-    decimal=DECIMAL_ONES(x);
-    WRITEBUF(buff,decimal+'0');
-
-    WRITEBUF(buff,separator);   //小数点を書く
-
-    //小数部
-    //TODO 1.0024999999999999*100000が10025.000000000000になることを直す必要ある
-    x*=(enlarge_scale*10);
-    for(int i=0;i<Decimal_Place;i++){
-        decimal=DECIMAL_ONES(x*shrink_scale);
-        WRITEBUF(buff,decimal+'0');
-        shrink_scale*=10;
+    for(p_write = buff+Decimal_Place+1;p_write>buff;p_write--){
+        decimal = effective%10;
+        *p_write = decimal+'0';
+        effective/=10;
     }
+    buff[0] = buff[1];
+    buff[1] = separator;
+    buff+=(Decimal_Place+2);
 
-    //指数部
+    //�w����
     WRITEBUF(buff,'E');
-    //符号
+    //����
     if(exponent<0){
         exponent=-exponent;
         WRITEBUF(buff,'-');
@@ -89,7 +87,7 @@ size_t Double2Ascii(char* buff,double x,char separator){
     }
 
     if(exponent>=100){
-        //指数部が3桁の時
+        //�w������3���̎�
         decimal=DECIMAL_ONES(exponent/100);
         WRITEBUF(buff,decimal+'0');
     }
@@ -98,10 +96,8 @@ size_t Double2Ascii(char* buff,double x,char separator){
     decimal=DECIMAL_ONES(exponent);
     WRITEBUF(buff,decimal+'0');
 
-FINALLY:
-    WRITEBUF(buff,0);
-
-    //NULL文字はカウントしない
-    return (buff - buff_sp-1);
+    *buff = 0;
+    //NULL�����̓J�E���g���Ȃ�
+    return (buff - buff_sp);
 }
 

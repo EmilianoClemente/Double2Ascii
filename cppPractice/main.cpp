@@ -26,7 +26,7 @@ int main()
             //int looptimes=(int)30E7;
             //double data=15.9672;
             printf("exponent=%f\n",exponent);
-            int looptimes = 1E7;
+            int looptimes = 10000000;
             double data = pow(10.0,exponent);
             time_t start=time(NULL);
             for(int i=0;i<looptimes;i++){
@@ -60,7 +60,7 @@ int main()
        // printf("looptimes=%d,sprintf cost %lld s\n",looptimes,end-start);
     }
 
-    if(0){
+    if(1){
         printf("個別確認\n");
         double data;
         data=100244999999999.984375;    //indivisible sample
