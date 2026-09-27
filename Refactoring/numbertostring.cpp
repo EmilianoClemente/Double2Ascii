@@ -118,17 +118,40 @@ size_t ToChars(char* buf, double x, char separator, int n){
 			return 2;
 		}
 		else{
-			// TODO
 			// subnormal number
-			return 0;
+			exponent = 1;
+			f = mantissa;
 		}
 	}
 
 	exponent = exponent - 1023 - 52;
 	if(exponent < (-52)){
-		// really small number
-		strcpy(buf, "Small");
-		return 5;
+		int digits;
+		e = 0;
+		while(exponent != 0){
+			while((0xffc0000000000000UL & f) == 0){
+				f = f * 10;
+				e = e - 1;
+			}
+			if(exponent < -10){
+				f = f >> 10;
+				exponent = exponent + 10;
+			}
+			else{
+				f = f >> 1;
+				exponent = exponent + 1;
+			}
+		}
+		digits = ndigit(f);
+		e = digits + e - 1;
+		while(digits > n){
+			digits--;
+			f = div10_64bit(f);
+		}
+
+		if(e <= -100){
+			edigit = 3;
+		}
 	}
 	else if(exponent < 0){
 		int p = -1 * exponent;
@@ -136,7 +159,6 @@ size_t ToChars(char* buf, double x, char separator, int n){
 		uint64_t mask = (0x1UL << p) - 1;
 		uint64_t remainder = f & mask;
 		int digits = ndigit(integer);
-
 		e = digits - 1;
 		if(digits < n){
 			while(digits < n){
@@ -168,11 +190,6 @@ size_t ToChars(char* buf, double x, char separator, int n){
 	}
 	else{
 		// really big number
-
-		// strcpy(buf, "REALLY BIG");
-		// return 	10;
-		// exponent >= 11
-		// 2 4 8 16 32 64 128 256 512 1024
 		int digits;
 		e = 0;
 		while(exponent > 10){
@@ -207,7 +224,7 @@ size_t ToChars(char* buf, double x, char separator, int n){
 			f = div10_64bit(f);
 		}
 
-		if(e > 100){
+		if(e >= 100){
 			edigit = 3;
 		}
 	}
@@ -230,6 +247,7 @@ size_t ToChars(char* buf, double x, char separator, int n){
 	buf[n + 1] = 'E';
 	if(e < 0){
 		buf[n+2] = '-';
+		e = -1 * e;
 	}
 	else{
 		buf[n+2] = '+';
@@ -237,9 +255,9 @@ size_t ToChars(char* buf, double x, char separator, int n){
 
 	write_effective(buf+n+3, e, edigit);
 
-	buf[n + 6] = 0;
+	buf[n + 3 + edigit] = 0;
 	
-	return n + 7;
+	return n + 4 + edigit;
 }
 
 #ifdef TEST_NUMBERTOSTRING
@@ -307,12 +325,17 @@ static void check_ToChars(){
 	check_ToChars_sub(1.23456E+18, 8);
 	check_ToChars_sub(9.998888E+18, 8);
 	check_ToChars_sub(3.456e+24, 8);
+	check_ToChars_sub(4.9136813-101, 8);
+	check_ToChars_sub(4.9136813+101, 8);
+	check_ToChars_sub(4.9136813e-101, 8);
+	check_ToChars_sub(4.9136813e+101, 8);
+	check_ToChars_sub(4.9136813e-309, 8);
 }
 
 #include <chrono>
 static void benchmark(){
 	char buffer[32];
-	const double x = 1234.567E+6;
+	const double x = 1.234567E10;
 	enum{
 		LOOP = 1000000,
 		N = 9,
