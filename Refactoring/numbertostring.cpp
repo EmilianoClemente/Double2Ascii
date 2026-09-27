@@ -1,7 +1,6 @@
 #include "numbertostring.h"
 #include <stdint.h>
 #include <string.h>
-#include <exception>
 
 static uint64_t div10_64bit(uint64_t x) {
 	unsigned __int128 magic = 0xCCCCCCCCCCCCCCCDULL;
@@ -28,6 +27,18 @@ static size_t handle_7ff(char* buf, uint64_t mantissa){
 	return 4;
 }
 
+static inline uint64_t fast_mod10_u64(uint64_t x) {
+    unsigned __int128 magic = 14757395258967641293ULL; 
+    
+    uint64_t q = (uint64_t)((x * magic) >> 67);
+    
+    return x - q * 10;
+}
+
+static inline uint64_t fast_mod100_u64(uint64_t x) {
+	return x - div100_64bit(x) * 100;
+}
+
 static char lookup_table[] = {
 	'0','0','0','1','0','2','0','3','0','4','0','5','0','6','0','7','0', '8','0', '9',
 	'1','0','1','1','1','2','1','3','1','4','1','5','1','6','1','7','1', '8','1', '9',
@@ -42,73 +53,18 @@ static char lookup_table[] = {
 };
 
 static void write_effective(char* buf, uint64_t effective, int n){
-#if 0
-	int loop = n / 2;
-	char* p;
-	buf += (n - 1);
-
-	while(loop > 0){
-		p = &(lookup_table[(effective % 100) * 2 + 1]);
-		effective = effective / 100;
-		*(buf--) = *(p--);
-		*(buf--) = *p;
-		loop--;
-	}
-
-	if(n % 2){
-		*buf = effective % 10 + '0' ;
-	}
-#else
 	char* w = buf + (n - 1);
 	char* p;
 	while(w > buf){
-		p = &(lookup_table[(effective % 100) * 2 + 1]);
-#if 1
-	//	effective = effective / 100;
+		p = &(lookup_table[fast_mod100_u64(effective) * 2 + 1]);
 		effective = div100_64bit(effective);
-#else
-		effective = div10_64bit(effective);
-		effective = div10_64bit(effective);
-#endif
-		// effective = div100_64bit(effective);
 		*(w--) = *(p--);
 		*(w--) = *p;
 	}
 
 	if(w == buf){
-		*w = effective % 10 + '0';
+		*w = fast_mod10_u64(effective) + '0';
 	}
-#endif
-}
-
-static void check_write_effective(){
-	char buffer[32];
-
-	write_effective(buffer, 987654321, 9);
-	buffer[9] = 0;
-
-	if(strcmp(buffer, "987654321") != 0){
-		printf("%s\n", buffer);
-		throw std::exception();
-	}
-
-	write_effective(buffer, 1234567890, 10);
-	buffer[10] = 0;
-
-	if(strcmp(buffer, "1234567890") != 0){
-		printf("%s\n", buffer);
-		throw std::exception();
-	}
-	printf("%s\n", buffer);
-
-	write_effective(buffer, 2, 2);
-	buffer[2] = 0;
-
-	if(strcmp(buffer, "02") != 0){
-		printf("%s\n", buffer);
-		throw std::exception();
-	}
-	printf("%s\n", buffer);
 }
 
 static int ndigit(uint64_t n){
@@ -141,7 +97,6 @@ size_t ToChars(char* buf, double x, char separator, int n){
 	uint64_t mantissa = bits & 0xfffffffffffffUL;
 	uint64_t f = mantissa | (0x1UL << 52);
 	int exponent = (bits >> 52) & 0x7ff;
-	char sign = (bits >> 63) == 0 ? ' ' : '-';
 	int e;
 	int edigit = 2;
 
@@ -150,7 +105,11 @@ size_t ToChars(char* buf, double x, char separator, int n){
 		return handle_7ff(buf, mantissa);
 	}
 
-	*(buf++) = sign;
+	if(bits >> 63){
+		// minus
+		*(buf++) = '-';
+	}
+
 	if(exponent == 0){
 		if(mantissa == 0){
 			// +- 0
@@ -183,7 +142,7 @@ size_t ToChars(char* buf, double x, char separator, int n){
 			while(digits < n){
 				digits ++;
 				remainder = (remainder & mask) * 10;
-				integer = integer * 10 + ((remainder >> p) % 10);
+				integer = integer * 10 + (fast_mod10_u64(remainder >> p));
 			}
 		}
 		else{
@@ -284,6 +243,37 @@ size_t ToChars(char* buf, double x, char separator, int n){
 }
 
 #ifdef TEST_NUMBERTOSTRING
+#include <exception>
+static void check_write_effective(){
+	char buffer[32];
+
+	write_effective(buffer, 987654321, 9);
+	buffer[9] = 0;
+
+	if(strcmp(buffer, "987654321") != 0){
+		printf("%s\n", buffer);
+		throw std::exception();
+	}
+
+	write_effective(buffer, 1234567890, 10);
+	buffer[10] = 0;
+
+	if(strcmp(buffer, "1234567890") != 0){
+		printf("%s\n", buffer);
+		throw std::exception();
+	}
+	printf("%s\n", buffer);
+
+	write_effective(buffer, 2, 2);
+	buffer[2] = 0;
+
+	if(strcmp(buffer, "02") != 0){
+		printf("%s\n", buffer);
+		throw std::exception();
+	}
+	printf("%s\n", buffer);
+}
+
 static void check_ToChars_sub(double x, int digits){
 	char buffer[64], answer[64];
 	memset(buffer, ' ', sizeof(buffer));
@@ -322,7 +312,7 @@ static void check_ToChars(){
 #include <chrono>
 static void benchmark(){
 	char buffer[32];
-	const double x = 1234.567E+11;
+	const double x = 1234.567E+6;
 	enum{
 		LOOP = 1000000,
 		N = 9,
