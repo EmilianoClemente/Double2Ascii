@@ -110,3 +110,5 @@ size_t Double2Ascii(char* buff,double x,char separator){
 
     return size;
 }
+
+size_t ToChars(char* buf, double x, char separator, int n);
