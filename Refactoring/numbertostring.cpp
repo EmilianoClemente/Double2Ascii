@@ -2347,16 +2347,20 @@ static void check_ToChars_sub(double x, int digits){
 	printf("expected:%s", buffer);
 
 	if(nanswer != nexpected){
-		printf("error:%s, %s\n", answer, buffer);
+		printf("\nerror:%s, %s\n", answer, buffer);
 		printf("n of answer=%d, n of expected = %d\n", nanswer, nexpected);
 		ToChars(answer, x, '.', digits + 1);
 		throw std::exception();
 	}
 
 	if(strcmp(answer, buffer)!= 0){
-		printf("error:%s, %s\n", answer, buffer);
+		printf("\nerror:%s, %s\n", answer, buffer);
 		ToChars(answer, x, '.', digits + 1);
-		printf("if we put one more digit:%s\n", answer);
+		snprintf(buffer, sizeof(buffer), "%.*E", digits, x);
+		printf("if we put one more digit, answer:%s, expected:%s\n", answer, buffer);
+		ToChars(answer, x, '.', digits + 2);
+		snprintf(buffer, sizeof(buffer), "%.*E", digits + 1, x);
+		printf("if we put 2 more digit, answer:%s, expected:%s\n", answer, buffer);
 		throw std::exception();
 	}
 
@@ -2408,6 +2412,19 @@ static void check_ToChars(){
 	check_ToChars_sub(INFINITY, 8);
 }
 
+#include <math.h>
+static void check_Coverage(){
+		double x;
+		for(int i=-1022; i<1023; i++){
+			x = pow(2, i);
+			try{
+				check_ToChars_sub(x, 9);
+			}catch(...){
+
+			}
+		}
+}
+
 #include <chrono>
 static void benchmark(){
 	char buffer[32];
@@ -2445,6 +2462,7 @@ int main(){
 		check_ToChars();
 		check_write_effective();
 		benchmark();
+		check_Coverage();
 
 		printf("all test passed\n");
 	}catch(...){
