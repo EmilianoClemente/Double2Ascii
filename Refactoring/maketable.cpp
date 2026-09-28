@@ -9,16 +9,24 @@ int main(){
 			d = powl(2, -1 * i);
 			p = roundl(log10(d));
 			n = powl(10, p);
+			if(d > n){
+				p++;
+				n = powl(10, p);
+			}
 			p = p * -1;
 		}
 		else{
 			n = powl(2, i);
 			p = roundl(log10(n));
 			d = powl(10, p);
+			if(d > n){
+				p--;
+				d = powl(10, p);
+			}
 		}
 
 		t = n / d;
-		printf("{%.16Lf, %d},\n", t, (int)p);
+		printf("{%.18Lf, %d},\n", t, (int)p);
 	}
 
 	return 0;
