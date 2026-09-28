@@ -2282,6 +2282,7 @@ size_t ToChars(char* buf, double x, char separator, int n){
 		f = f + 10;
 		if(ndigit(f) != n){
 			f = div10_64bit(f);
+			e = e + 1;
 		}
 	}
 	f = div10_64bit(f);
@@ -2379,6 +2380,28 @@ static void check_ToChars(){
 	check_ToChars_sub(4.9136813e-101, 8);
 	check_ToChars_sub(4.9136813e+101, 8);
 	check_ToChars_sub(4.9136813e-309, 8);
+	check_ToChars_sub(9.999999977, 8);
+	check_ToChars_sub(9.999999957, 8);
+	check_ToChars_sub(9.999999947, 8);
+	check_ToChars_sub(-1.2345, 8);
+	check_ToChars_sub(-234567, 8);
+	check_ToChars_sub(-34567, 8);
+	check_ToChars_sub(-4567, 8);
+	check_ToChars_sub(-567, 8);
+	check_ToChars_sub(-1.23456E-33, 8);
+	check_ToChars_sub(-1.23456E+16, 8);
+	check_ToChars_sub(-1.23456E+17, 8);
+	check_ToChars_sub(-1.23456E+18, 8);
+	check_ToChars_sub(-9.998888E+18, 8);
+	check_ToChars_sub(-3.456e+24, 8);
+	check_ToChars_sub(-4.9136813-101, 8);
+	check_ToChars_sub(-4.9136813+101, 8);
+	check_ToChars_sub(-4.9136813e-101, 8);
+	check_ToChars_sub(-4.9136813e+101, 8);
+	check_ToChars_sub(-4.9136813e-309, 8);
+	check_ToChars_sub(-9.999999977, 8);
+	check_ToChars_sub(-9.999999957, 8);
+	check_ToChars_sub(-9.999999947, 8);
 	check_ToChars_sub(0.0, 8);
 	check_ToChars_sub(-0.0, 8);
 	check_ToChars_sub(NAN, 8);
