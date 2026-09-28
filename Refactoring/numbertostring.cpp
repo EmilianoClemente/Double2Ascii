@@ -16,15 +16,21 @@ static uint64_t div100_64bit(uint64_t x) {
     return (uint64_t)(product >> 64);
 }
 
+static uint64_t quick_divide_10000_64bit(uint64_t n) {
+    unsigned __int128 magic = 3741444191567111425ULL; 
+    
+    return (uint64_t)((magic * n) >> 75);
+}
+
 static size_t handle_7ff(char* buf, uint64_t mantissa){
 	if(mantissa == 0){
-		memcpy(buf, "Inf", 4);
+		memcpy(buf, "INF", 4);
 	}
 	else{
-		memcpy(buf, "NaN", 4);
+		memcpy(buf, "NAN", 4);
 	}
 
-	return 4;
+	return 3;
 }
 
 static inline uint64_t fast_mod10_u64(uint64_t x) {
@@ -2208,8 +2214,8 @@ size_t ToChars(char* buf, double x, char separator, int n){
 	int e;
 	int edigit = 2;
 	const lookup_t* lookup;
+	size_t written = 0;
 
-	n++;
 	if(exponent == 0x7ff){
 		return handle_7ff(buf, mantissa);
 	}
@@ -2217,14 +2223,20 @@ size_t ToChars(char* buf, double x, char separator, int n){
 	if(bits >> 63){
 		// minus
 		*(buf++) = '-';
+		written++;
 	}
 
 	if(exponent == 0){
 		if(mantissa == 0){
-			// +- 0
-			*(buf++) = '0';
-			*buf = 0;
-			return 2;
+			*buf = '0';
+			buf[1] = separator;
+			memset(buf + 2, '0', n - 1);
+			buf[n + 1] = 'E';
+			buf[n + 2] = '+';
+			buf[n + 3] = '0';
+			buf[n + 4] = '0';
+			buf[n + 5] = 0;
+			return n + 5 + written;
 		}
 		else{
 			// subnormal number
@@ -2235,15 +2247,29 @@ size_t ToChars(char* buf, double x, char separator, int n){
 
 	exponent = exponent - 1023 - 52;
 	lookup = &(__lookup[exponent + 1076]);
+	n++;	// handle as it has one more digit for later rounded
 
 	{
-		int digits;
+		int digits, gap;
 		f = f * lookup->coef;
 		digits = ndigit(f);
 		e = lookup->pow + digits - 1;
 
-		while(digits > n){
-			digits--;
+		gap = digits - n;
+
+		while(gap > 4){
+			f = div100_64bit(f);
+			f = div100_64bit(f);
+			gap = gap - 4;
+		}
+
+		while(gap > 1){
+			f = div100_64bit(f);
+			gap = gap - 2;
+		}
+
+		while(gap > 0){
+			gap--;
 			f = div10_64bit(f);
 		}
 
@@ -2252,10 +2278,9 @@ size_t ToChars(char* buf, double x, char separator, int n){
 		}
 	}
 
-	if(f % 10 > 5){
-		f++;
+	if(f % 10 >= 5){
+		f = f + 10;
 		if(ndigit(f) != n){
-			// f = f / 10;
 			f = div10_64bit(f);
 		}
 	}
@@ -2279,7 +2304,7 @@ size_t ToChars(char* buf, double x, char separator, int n){
 
 	buf[n + 3 + edigit] = 0;
 	
-	return n + 4 + edigit;
+	return written + n + 3 + edigit;
 }
 
 #ifdef TEST_NUMBERTOSTRING
@@ -2291,7 +2316,6 @@ static void check_write_effective(){
 	buffer[9] = 0;
 
 	if(strcmp(buffer, "987654321") != 0){
-		printf("%s\n", buffer);
 		throw std::exception();
 	}
 
@@ -2299,40 +2323,43 @@ static void check_write_effective(){
 	buffer[10] = 0;
 
 	if(strcmp(buffer, "1234567890") != 0){
-		printf("%s\n", buffer);
 		throw std::exception();
 	}
-	printf("%s\n", buffer);
 
 	write_effective(buffer, 2, 2);
 	buffer[2] = 0;
 
 	if(strcmp(buffer, "02") != 0){
-		printf("%s\n", buffer);
 		throw std::exception();
 	}
-	printf("%s\n", buffer);
 }
 
 static void check_ToChars_sub(double x, int digits){
 	char buffer[64], answer[64];
+	int nanswer, nexpected;
 	memset(buffer, ' ', sizeof(buffer));
-	ToChars(answer, x, '.', digits);
+	nanswer = ToChars(answer, x, '.', digits);
 
-	printf("%s", answer);
+	printf("answer:%s,", answer);
 
-	if(x > 0){
-		snprintf(buffer, sizeof(buffer), " %.*E", digits - 1, x);
-		printf("%s\n", buffer);
-	}
-	else{
-		snprintf(buffer, sizeof(buffer), "%.*E", digits - 1, x);
-		printf("%s\n", buffer);
+	nexpected = snprintf(buffer, sizeof(buffer), "%.*E", digits - 1, x);
+	printf("expected:%s", buffer);
+
+	if(nanswer != nexpected){
+		printf("error:%s, %s\n", answer, buffer);
+		printf("n of answer=%d, n of expected = %d\n", nanswer, nexpected);
+		ToChars(answer, x, '.', digits + 1);
+		throw std::exception();
 	}
 
 	if(strcmp(answer, buffer)!= 0){
-		// throw std::exception();
+		printf("error:%s, %s\n", answer, buffer);
+		ToChars(answer, x, '.', digits + 1);
+		printf("if we put one more digit:%s\n", answer);
+		throw std::exception();
 	}
+
+	printf(", matched\n");
 }
 
 static void check_ToChars(){
@@ -2352,6 +2379,10 @@ static void check_ToChars(){
 	check_ToChars_sub(4.9136813e-101, 8);
 	check_ToChars_sub(4.9136813e+101, 8);
 	check_ToChars_sub(4.9136813e-309, 8);
+	check_ToChars_sub(0.0, 8);
+	check_ToChars_sub(-0.0, 8);
+	check_ToChars_sub(NAN, 8);
+	check_ToChars_sub(INFINITY, 8);
 }
 
 #include <chrono>
@@ -2391,6 +2422,8 @@ int main(){
 		check_ToChars();
 		check_write_effective();
 		benchmark();
+
+		printf("all test passed\n");
 	}catch(...){
 		printf("test failed\n");
 	}
